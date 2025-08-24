@@ -4,7 +4,7 @@
   "description": "a scalable backend for an ecommerce app for shoes",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
   },
   "keywords": [
     "backend",
@@ -18,8 +18,11 @@
     "nodemon": "^3.1.10"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
     "eslint": "^9.34.0",
     "express": "^5.1.0",
+    "mongodb": "^6.18.0",
     "prettier": "^3.6.2"
   }
 }
