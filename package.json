@@ -1,0 +1,25 @@
+{
+  "name": "ecommerce-backend-webapp",
+  "version": "1.0.0",
+  "description": "a scalable backend for an ecommerce app for shoes",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "backend",
+    "shoes",
+    "ecommerce",
+    "app"
+  ],
+  "author": "Yash Bisht",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "dependencies": {
+    "eslint": "^9.34.0",
+    "express": "^5.1.0",
+    "prettier": "^3.6.2"
+  }
+}
