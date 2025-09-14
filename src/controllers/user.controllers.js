@@ -23,6 +23,49 @@ const generateAccessAndRefreshToken = async (userId) => {
   }
 };
 
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const incomingRefreshToken =
+    req.cookie?.refreshToken || req.body?.refreshToken;
+  if (!incomingRefreshToken) throw new ApiError(401, "Unauthorized user");
+
+  try {
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+
+    // RETRIVING TOKEN FROM USER FROM DB
+    const user = User.findById(decodedToken?._id);
+    if (!user) throw new ApiError(401, "Invalid refresh Token");
+
+    if (incomingRefreshToken !== user?.refreshToken)
+      throw new ApiError(401, "Refresh token has been expired");
+
+    // GENERATING TOKENS
+    const { accessToken, refreshToken: newRefreshToken } =
+      generateAccessAndRefreshToken(user?._id);
+
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newRefreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          { accessToken, refreshToken: newRefreshToken },
+          "Access token refreshed successfully"
+        )
+      );
+  } catch (error) {
+    throw new ApiError(401, error?.message || "Invalid refresh token");
+  }
+});
+
 const registerUser = asyncHandler(async (req, res) => {
   //1. GET DETAILS FROM FRONTEND
   const { username, fullname, email, address, password } = req.body;
@@ -128,47 +171,68 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logged out successfully"));
 });
 
-const refreshAccessToken = asyncHandler(async (req, res) => {
-  const incomingRefreshToken =
-    req.cookie?.refreshToken || req.body?.refreshToken;
-  if (!incomingRefreshToken) throw new ApiError(401, "Unauthorized user");
+const updateUserDetails = asyncHandler(async (req, res) => {
+  const { username, fullname, email, address } = req.body;
+  const id = req.user?._id;
 
-  try {
-    const decodedToken = jwt.verify(
-      incomingRefreshToken,
-      process.env.REFRESH_TOKEN_SECRET
+  if (!username || !fullname || !email || !address)
+    throw new ApiError(400, "All fields are required");
+  if (!id) throw new ApiError(400, "User Id is required");
+
+  const updatedUser = await User.findByIdAndUpdate(
+    id,
+    {
+      $set: {
+        username: username.toLowerCase(),
+        fullname,
+        email,
+        address,
+      },
+    },
+    {
+      new: true,
+    }
+  ).select(" -password");
+
+  if (!updatedUser)
+    throw new ApiError(400, "Error while updating user details");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, updatedUser, "User details updated successfully")
     );
+});
 
-    // RETRIVING TOKEN FROM USER FROM DB
-    const user = User.findById(decodedToken?._id);
-    if (!user) throw new ApiError(401, "Invalid refresh Token");
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  const { curPassword, newPassword } = req.body;
 
-    if (incomingRefreshToken !== user?.refreshToken)
-      throw new ApiError(401, "Refresh token has been expired");
+  if (!curPassword || !newPassword)
+    throw new ApiError(400, "All fields are required");
+  if (curPassword !== newPassword)
+    throw new ApiError(400, "Current and new passwords must not be the same");
 
-    // GENERATING TOKENS
-    const { accessToken, refreshToken: newRefreshToken } =
-      generateAccessAndRefreshToken(user?._id);
+  const user = await User.findById(req.user?._id);
+  const isPasswordCorrect = await user.isPasswordCorrect(curPassword);
 
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
+  if (isPasswordCorrect) {
+    // UPDATING PASSWORD SIMPLY IN USER OBJECT, AS WE UPDATE IN OBJECTS NORMALLY
+    user.password = newPassword;
+    user.save({ validateBeforeSave: false });
 
     return res
       .status(200)
-      .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", newRefreshToken, options)
-      .json(
-        new ApiResponse(
-          200,
-          { accessToken, refreshToken: newRefreshToken },
-          "Access token refreshed successfully"
-        )
-      );
-  } catch (error) {
-    throw new ApiError(401, error?.message || "Invalid refresh token");
+      .json(new ApiResponse(200, {}, "Password updated successfully"));
+  } else {
+    throw new ApiError(400, "Invalid current password");
   }
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  updateUserDetails,
+  changeCurrentPassword,
+};
