@@ -8,7 +8,6 @@ import {
   updateProductDetails,
   updateProductImages,
 } from "../controllers/product.controllers.js";
-import multer from "multer";
 import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router();

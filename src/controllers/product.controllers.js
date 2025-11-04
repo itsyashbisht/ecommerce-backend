@@ -46,7 +46,9 @@ const getAllProducts = asyncHandler(async (req, res) => {
   if (!products)
     throw new ApiError(500, "Something went wrong while fetching products");
 
-  return res.status(200).json(200, products, "Products fetched successfully");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, products, "Products fetched successfully"));
 });
 
 const createProduct = asyncHandler(async (req, res) => {
@@ -106,6 +108,8 @@ const createProduct = asyncHandler(async (req, res) => {
 });
 
 const updateProductDetails = asyncHandler(async (req, res) => {
+  console.log(req.body);
+
   const { productId } = req.params;
   const { name, brand, category, description, price, sizes, colors, stock } =
     req.body;
@@ -150,7 +154,13 @@ const updateProductDetails = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(200, updatedProduct, "Product details updated successfully");
+    .json(
+      new ApiResponse(
+        200,
+        updatedProduct,
+        "Product details updated successfully"
+      )
+    );
 });
 
 const updateProductImages = asyncHandler(async (req, res) => {
