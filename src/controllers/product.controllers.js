@@ -52,6 +52,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
 const createProduct = asyncHandler(async (req, res) => {
   const { name, brand, category, description, price, sizes, colors, stock } =
     req.body;
+  console.log(req.body, req.files);
 
   if (
     !name ||
@@ -66,10 +67,22 @@ const createProduct = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All fields are required");
 
   const imagesLocalPaths = req.files?.images.map((img) => img.path) || [];
-  if (!imagesLocalPaths)
+  console.log(imagesLocalPaths);
+
+  if (imagesLocalPaths.length < 2)
     throw new ApiError(400, "Atleast 2 product image is required");
 
-  const productImages = await uploadOnCloudinary(imagesLocalPaths);
+  const productImages = [];
+
+  for (let i = 0; i < imagesLocalPaths.length; i++) {
+    const image = await uploadOnCloudinary(imagesLocalPaths[i]);
+    productImages.push({
+      public_id: image.public_id,
+      url: image.url,
+    });
+  }
+  console.log(productImages);
+
   if (!productImages) throw new ApiError(400, "Product images are required");
 
   // CREATING PRODUCT ENTRY IN DB
@@ -180,7 +193,9 @@ const deleteProduct = asyncHandler(async (req, res) => {
   const deletedProduct = await Product.findByIdAndDelete(productId);
   if (!deletedProduct) throw new ApiError(404, "Product not found");
 
-  return res.status(200).json(200, {}, "Successfully deleted the product");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Successfully deleted the product"));
 });
 
 const productById = asyncHandler(async (req, res) => {
@@ -190,7 +205,9 @@ const productById = asyncHandler(async (req, res) => {
   const product = await Product.findById(productId);
   if (!product) throw new ApiError(404, "Product not found");
 
-  return res.status(200).json(200, product, "Product fetched successfully");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, product, "Product fetched successfully"));
 });
 
 export {
