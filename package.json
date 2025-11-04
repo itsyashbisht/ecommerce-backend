@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "a scalable backend for an ecommerce app for shoes",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
   },
@@ -20,6 +21,7 @@
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.7.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "eslint": "^9.34.0",

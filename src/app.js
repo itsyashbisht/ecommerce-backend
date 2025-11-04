@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 
 // EXPRESS APP
 const app = express();
@@ -9,13 +10,17 @@ app.use(
     credentials: true,
   })
 );
+app.use(cookieParser());
 
 // CONFIG.
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 
-import userRouter from "./routes/userRoutes";
+import userRouter from "./routes/userRoutes.js";
+import productRouter from "./routes/productRoutes.js";
 
+// ROUTES.
 app.use("/api/v1/user", userRouter);
+app.use("/api/v1/product", productRouter);
 
 export { app };

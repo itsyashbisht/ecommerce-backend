@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
-import bcyrpt from "bcrypt";
+import bcrypt from "bcrypt";
 
 const userSchema = new mongoose.Schema(
   {
@@ -61,18 +61,16 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const User = mongoose.model("User", userSchema);
-
 // INCRYPTING PASSWORD ON SAVING AND UPDATING
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
-  this.password = await bcyrpt.hash(this.password, 10);
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
 userSchema.methods.isPasswordCorrect = async function (password) {
-  return await bcyrpt.compare(password, this.password);
+  return await bcrypt.compare(password, this.password);
 };
 
 // GENERATE TOKEN FUNCTIONS
@@ -102,3 +100,5 @@ userSchema.methods.generateRefreshToken = function () {
     }
   );
 };
+
+export const User = mongoose.model("User", userSchema);

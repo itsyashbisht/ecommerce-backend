@@ -1,7 +1,7 @@
-import { User } from "../models/user.model";
-import { ApiError } from "../utils/apiError";
-import { ApiResponse } from "../utils/apiResponse";
-import { asyncHandler } from "../utils/asyncHandler";
+import { User } from "../models/user.model.js";
+import { ApiError } from "../utils/apiError.js";
+import { ApiResponse } from "../utils/apiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -68,14 +68,25 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
 const registerUser = asyncHandler(async (req, res) => {
   //1. GET DETAILS FROM FRONTEND
-  const { username, fullname, email, address, password } = req.body;
+  const {
+    username,
+    fullname,
+    email,
+    address,
+    password,
+    pincode,
+    city,
+    state,
+    phoneNumber,
+    role = "user",
+  } = req.body;
 
   //2. VALIDATIONS
   if (!username || !fullname || !email || !address || !password)
     throw new ApiError(400, "All fields are required");
 
   //3. CHECK IF THIS USER ALREADY EXISTS
-  const existedUser = User.findOne({ $or: [{ username }, { email }] });
+  const existedUser = await User.findOne({ $or: [{ username }, { email }] });
   if (existedUser)
     throw new ApiError(400, "User with this username or email already exists");
 
@@ -86,6 +97,11 @@ const registerUser = asyncHandler(async (req, res) => {
     password,
     username: username.toLowerCase(),
     address,
+    city,
+    state,
+    pincode,
+    phoneNumber,
+    role,
   });
 
   //5. REMOVING PASSWORD AND REFRESH TOKEN FROM RESPONSE
@@ -110,8 +126,8 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All fields are required");
 
   // CHECK WETHER THE USER EXISTS OR NOT
-  const user = User.findOne({ $or: [{ username }, { email }] });
-  if (!existedUser) throw new ApiError(400, "User does not exists");
+  const user = await User.findOne({ $or: [{ username }, { email }] });
+  if (!user) throw new ApiError(400, "User does not exists");
 
   // CHECKING PASSWORD
   const isPasswordValid = await user.isPasswordCorrect(password);
@@ -140,13 +156,14 @@ const loginUser = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        { user: loggedInUser, accessToken, refreshToken },
+        { user: loggedInUser, accessToken },
         "User logged in successfully"
       )
     );
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
+  console.log(req.user._id);
   await User.findByIdAndUpdate(
     req.user?._id,
     {
@@ -172,10 +189,29 @@ const logoutUser = asyncHandler(async (req, res) => {
 });
 
 const updateUserDetails = asyncHandler(async (req, res) => {
-  const { username, fullname, email, address } = req.body;
+  const {
+    username,
+    fullname,
+    email,
+    address,
+    pincode,
+    city,
+    state,
+    phoneNumber,
+  } = req.body;
   const id = req.user?._id;
 
-  if (!username || !fullname || !email || !address)
+  // IMPROVE THIS - Such that u can only change one detail
+  if (
+    !username ||
+    !fullname ||
+    !email ||
+    !address ||
+    !pincode ||
+    !city ||
+    !state ||
+    !phoneNumber
+  )
     throw new ApiError(400, "All fields are required");
   if (!id) throw new ApiError(400, "User Id is required");
 
@@ -187,6 +223,10 @@ const updateUserDetails = asyncHandler(async (req, res) => {
         fullname,
         email,
         address,
+        pincode,
+        city,
+        state,
+        phoneNumber,
       },
     },
     {
@@ -209,7 +249,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
   if (!curPassword || !newPassword)
     throw new ApiError(400, "All fields are required");
-  if (curPassword !== newPassword)
+  if (curPassword === newPassword)
     throw new ApiError(400, "Current and new passwords must not be the same");
 
   const user = await User.findById(req.user?._id);

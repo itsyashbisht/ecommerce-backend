@@ -1,8 +1,8 @@
-import { Product } from "../models/product.model";
-import { ApiError } from "../utils/apiError";
-import { ApiResponse } from "../utils/apiResponse";
-import { asyncHandler } from "../utils/asyncHandler";
-import { uploadOnCloudinary } from "../utils/cloudinary";
+import { Product } from "../models/product.model.js";
+import { ApiError } from "../utils/apiError.js";
+import { ApiResponse } from "../utils/apiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const getAllProducts = asyncHandler(async (req, res) => {
   const {
@@ -10,7 +10,43 @@ const getAllProducts = asyncHandler(async (req, res) => {
     limit = 15,
     sortBy = "createdAt",
     sortType = "asc",
-  } = req.params;
+  } = req.query;
+
+  const settingSortType = sortType === "asc" ? 1 : -1; // 1 = ascending & -1 = descending order
+
+  const products = await Product.aggregate([
+    {
+      $sort: {
+        [sortBy]: settingSortType,
+      },
+    },
+    {
+      $skip: parseInt((page - 1) * 10),
+    },
+    {
+      $limit: parseInt(limit),
+    },
+    {
+      $project: {
+        createdAt: 1,
+        name: 1,
+        brand: 1,
+        category: 1,
+        description: 1,
+        description: 1,
+        price: 1,
+        sizes: 1,
+        colors: 1,
+        stock: 1,
+        images: 1,
+      },
+    },
+  ]);
+
+  if (!products)
+    throw new ApiError(500, "Something went wrong while fetching products");
+
+  return res.status(200).json(200, products, "Products fetched successfully");
 });
 
 const createProduct = asyncHandler(async (req, res) => {
