@@ -45,12 +45,15 @@ const getUserCart = asyncHandler(async (req, res) => {
         _id: "$user",
         items: {
           $push: {
-            itemId: "$_id",
-            productDetails: "$productDetails",
-            quantity: "$quantity",
-            size: "$size",
-            color: "$color",
-            totalPrice: "$totalPrice",
+            $mergeObjects: [
+              "$productDetails",
+              {
+                quantity: "$quantity",
+                size: "$size",
+                color: "$color",
+                totalPrice: "$totalPrice",
+              },
+            ],
           },
         },
         grandTotal: { $sum: "$totalPrice" },
@@ -133,7 +136,7 @@ const clearCart = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
   if (!userId) throw new ApiError(400, "User Id is required");
 
-  const cart = await Cart.findById(userId);
+  const cart = await Cart.deleteMany({ user: userId });
   console.log(cart);
   if (!cart) throw new ApiError("Cart doesn't found");
 
