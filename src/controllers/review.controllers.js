@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
-import { Review } from "../models/review.model";
-import { ApiError } from "../utils/apiError";
-import { asyncHandler } from "../utils/asyncHandler";
-import { ApiResponse } from "../utils/apiResponse";
+import { Review } from "../models/review.model.js";
+import { ApiError } from "../utils/apiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiResponse } from "../utils/apiResponse.js";
 
 const getProductReviewsById = asyncHandler(async (req, res) => {
   const { productId } = req.params;
@@ -22,6 +22,7 @@ const getProductReviewsById = asyncHandler(async (req, res) => {
       },
     },
   ]);
+  console.log(reviews);
 
   if (!reviews) throw new ApiError(400, "No review found for this product");
 
@@ -44,7 +45,7 @@ const addReview = asyncHandler(async (req, res) => {
     comment,
     rating,
     user: new mongoose.Types.ObjectId(userId),
-    productId: new mongoose.Types.ObjectId(productId),
+    product: new mongoose.Types.ObjectId(productId),
   });
   if (!review) throw new ApiError(500, "Failed to create review");
 
@@ -60,7 +61,21 @@ const removeReview = asyncHandler(async (req, res) => {
   const review = await Review.findOneAndDelete(reviewId);
   if (!review) throw new ApiError(400, "No review found");
 
-  return res.status(200).json(200, {}, "Review deleted successfully");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Review deleted successfully"));
 });
 
-export { getProductReviewsById, addReview, removeReview };
+const getReviewById = asyncHandler(async (req, res) => {
+  const reviewId = req.params?.reviewId;
+  if (!reviewId) throw new ApiError(400, "Review id is required");
+
+  const review = await Review.findById(reviewId);
+  if (!review) throw new ApiError(404, "Review not found");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, review, "Review fetched successfully"));
+});
+
+export { getProductReviewsById, addReview, removeReview, getReviewById };

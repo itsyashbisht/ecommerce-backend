@@ -18,9 +18,13 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 
 import userRouter from "./routes/userRoutes.js";
 import productRouter from "./routes/productRoutes.js";
+import reviewRouter from "./routes/reviewRoutes.js";
+import cartRouter from "./routes/cartRoutes.js";
 
 // ROUTES.
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/product", productRouter);
+app.use("/api/v1/review", reviewRouter);
+app.use("/api/v1/cart", cartRouter);
 
 export { app };
