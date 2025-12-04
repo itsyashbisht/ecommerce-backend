@@ -12,28 +12,27 @@ const orderSchema = new mongoose.Schema(
           type: Number,
           required: [true, "Please enter quantity of the product"],
         },
+        price: {
+          type: Number,
+          required: [true, "Price of the product is required"],
+        },
       },
     ],
     amount: {
       type: Number,
       required: true,
     },
+    paymentMethod: {
+      type: String,
+      enum: ["COD", "online"],
+      default: "online",
+    },
     paymentInfo: {
-      razorpay_order_id: {
-        type: String,
-        required: [true, "Invalid Razorpay Order ID"],
-      },
-      razorpay_payment_id: {
-        type: String,
-        required: [true, "Invalid Razorpay Payment ID"],
-      },
-      razorpay_signature: {
-        type: String,
-        required: [true, "Invalid Razorpay Signature"],
-      },
+      razorpay_order_id: String,
+      razorpay_payment_id: String,
+      razorpay_signature: String,
     },
     paymentStatus: {
-      // PENDING || PAID || FAILED || REFUND
       type: String,
       enum: ["Pending", "Paid", "Failed", "Refunded"],
       default: "Pending",
@@ -75,6 +74,10 @@ const orderSchema = new mongoose.Schema(
           required: [true, "Please enter your email"],
         },
       },
+    },
+    deliverAt: {
+      type: Date,
+      required: true,
     },
 
     user: {
