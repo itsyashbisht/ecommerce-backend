@@ -3,68 +3,38 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { ApiError } from "../utils/apiError.js";
 import { Cart } from "../models/cart.model.js";
 import mongoose from "mongoose";
+import { Product } from "../models/product.model.js";
 
 const getUserCart = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
+  if (!userId) throw new ApiError(401, "User Id is Unauthorized");
 
-  const cart = await Cart.aggregate([
-    {
-      $match: {
-        user: new mongoose.Types.ObjectId(userId),
-      },
-    },
-    {
-      $lookup: {
-        from: "products",
-        localField: "product",
-        foreignField: "_id",
-        as: "productDetails",
-      },
-    },
-    {
-      $project: {
-        user: 1,
-        size: 1,
-        color: 1,
-        quantity: 1,
-        productDetails: 1,
-      },
-    },
-    {
-      $unwind: "$productDetails",
-    },
-    {
-      $addFields: {
-        totalPrice: {
-          $multiply: ["$productDetails.price", "$quantity"],
-        },
-      },
-    },
-    {
-      $group: {
-        _id: "$user",
-        items: {
-          $push: {
-            $mergeObjects: [
-              "$productDetails",
-              {
-                quantity: "$quantity",
-                size: "$size",
-                color: "$color",
-                totalPrice: "$totalPrice",
-              },
-            ],
-          },
-        },
-        grandTotal: { $sum: "$totalPrice" },
-      },
-    },
-  ]);
-  if (!cart) throw new ApiError(500, "Error while fetching cart");
+  const cart = await Cart.findOne({ user: userId })
+    .populate("items.product", "name price stock images")
+    .sort({ updatedAt: -1 });
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, cart, "Successfully fetched user cart"));
+  if (!cart) throw new ApiError(404, "Cart not found");
+  let totalAmount = 0;
+
+  if (cart.items.length > 0) {
+    for (const item of cart.items) {
+      if (!item.product) continue;
+
+      const itemTotal = item.product.price * item.quantity;
+      totalAmount += itemTotal;
+    }
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        items: cart.items,
+        totalAmount,
+      },
+      "Successfully fetched user cart"
+    )
+  );
 });
 
 const addtoCart = asyncHandler(async (req, res) => {
@@ -77,30 +47,88 @@ const addtoCart = asyncHandler(async (req, res) => {
   if (!size || !color || !quantity)
     throw new ApiError(400, "All fields are required");
 
-  const cartItem = await Cart.create({
-    user: new mongoose.Types.ObjectId(userId),
-    product: new mongoose.Types.ObjectId(productId),
-    size,
-    color,
-    quantity,
-  });
-  if (!cartItem) throw new ApiError(500, "Failed to add item to cart");
+  // CHECK PRODUCT
+  const product = await Product.findById(productId);
+  if (!product) throw new ApiError(400, "Prouduct not found");
+
+  // CHECK STOCK
+  if (product.stock < quantity)
+    throw new ApiError(400, "Not enough stock available");
+
+  let cart = await Cart.findOne({ user: userId });
+
+  // CREATE CART , IF IT ALREADY NOT EXISTS
+  if (!cart) {
+    cart = await Cart.create({
+      user: new mongoose.Types.ObjectId(userId),
+      items: [
+        {
+          product: new mongoose.Types.ObjectId(productId),
+          size,
+          color,
+          quantity,
+        },
+      ],
+    });
+
+    return res
+      .status(201)
+      .json(new ApiResponse(200, cart, "Item added to cart successfully"));
+  }
+
+  // CHECK IF THE ITEM ALREADY EXISTS IN CART
+  const itemIndex = cart.items.findIndex(
+    (item) =>
+      item.product.toString() === productId &&
+      item.size === size &&
+      item.color === color
+  );
+
+  // IF EXISTS, INCREASE QUANTITY
+  if (itemIndex > -1) {
+    const newQuantity = cart.items[itemIndex].quantity + quantity;
+
+    if (newQuantity > product.stock)
+      throw new ApiError(400, "Not enough stock available");
+
+    cart.items[itemIndex].quantity = newQuantity;
+  } else {
+    cart.items.push({
+      product: new mongoose.Types.ObjectId(productId),
+      size,
+      color,
+      quantity,
+    });
+  }
+
+  // SAVE CART
+  const cartSaved = await cart.save();
+  if (!cartSaved) throw new ApiError(500, "Failed adding items to cart");
 
   return res
     .status(200)
-    .json(new ApiResponse(200, cartItem, "Item added to cart successfully"));
+    .json(new ApiResponse(200, cart, "Item added to cart successfully"));
 });
 
-const removeFromCart = asyncHandler(async (req, res) => {
+const removeProductFromCart = asyncHandler(async (req, res) => {
   const { productId } = req.params;
+  const userId = req.user?._id;
+  if (!userId) throw new ApiError(401, "User Id is Unauthorized");
   if (!productId) throw new ApiError(400, "Product Id is required");
 
-  const item = await Cart.findByIdAndDelete(productId);
-  if (!item) throw new ApiError(404, "Item not found");
+  // CHECK IF THE CART EXISTS
+  const cart = await Cart.findOne({ user: userId });
+  if (!cart) throw new ApiError(404, "Cart not found");
+
+  const updatedCart = await Cart.findOneAndUpdate(
+    { user: userId },
+    { $pull: { items: { product: productId } } },
+    { new: true }
+  );
 
   return res
     .status(200)
-    .json(new ApiResponse(200, {}, "Item removed from cart successfully"));
+    .json(new ApiResponse(200, updatedCart, "Item removed from cart successfully"));
 });
 
 const UpdateItemQuantity = asyncHandler(async (req, res) => {

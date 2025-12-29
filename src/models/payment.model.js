@@ -8,15 +8,25 @@ const paymentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
+      enum: ["PENDING", "SUCCESS", "FAILED"],
+      default: "PENDING",
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+    },
+    currency: {
+      type: String,
+      default: "INR",
+    },
+    razorpay_order_id: {
+      type: String,
       required: true,
     },
     razorpay_payment_id: {
       type: String,
       required: [true, "Invalid Razorpay payment id"],
-    },
-    razorpay_order_id: {
-      type: String,
-      required: [true, "Invalid Razorpay order id"],
     },
     razorpay_signature: {
       type: String,

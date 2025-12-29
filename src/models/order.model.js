@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema(
   {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     orderItems: [
       {
         product: {
@@ -18,30 +23,7 @@ const orderSchema = new mongoose.Schema(
         },
       },
     ],
-    amount: {
-      type: Number,
-      required: true,
-    },
-    paymentMethod: {
-      type: String,
-      enum: ["COD", "online"],
-      default: "online",
-    },
-    paymentInfo: {
-      razorpay_order_id: String,
-      razorpay_payment_id: String,
-      razorpay_signature: String,
-    },
-    paymentStatus: {
-      type: String,
-      enum: ["Pending", "Paid", "Failed", "Refunded"],
-      default: "Pending",
-    },
-    orderStatus: {
-      type: String,
-      enum: ["Processing", "Out For Delivery", "Delivered", "Cancelled"],
-      default: "Processing",
-    },
+
     shippingAddress: {
       type: {
         fullname: {
@@ -75,15 +57,39 @@ const orderSchema = new mongoose.Schema(
         },
       },
     },
-    deliverAt: {
-      type: Date,
+
+    paymentMethod: {
+      type: String,
+      enum: ["COD", "ONLINE"],
       required: true,
     },
-
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+    paymentInfo: {
+      razorpay_order_id: String,
+      razorpay_payment_id: String,
+      razorpay_signature: String,
     },
+    paymentStatus: {
+      type: String,
+      enum: ["PENDING", "PAID", "FAILED", "REFUNDED"],
+      default: "PENDING",
+    },
+    orderStatus: {
+      type: String,
+      enum: [
+        "CREATED",
+        "PROCESSING",
+        "OUT_FOR_DELIVERY",
+        "DELIVERED",
+        "CANCELLED",
+      ],
+      default: "CREATED",
+    },
+    totalAmount: {
+      type: Number,
+      required: true,
+    },
+    paidAt: Date,
+    deliverAt: Date,
   },
   {
     timestamps: true,
