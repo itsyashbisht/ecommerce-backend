@@ -4,7 +4,7 @@ import {
   addtoCart,
   clearCart,
   getUserCart,
-  removeFromCart,
+  removeProductFromCart,
   UpdateItemQuantity,
 } from "../controllers/cart.controllers.js";
 
@@ -12,7 +12,7 @@ const router = Router();
 router.use(verifyJWT);
 
 router.route("/addItem/:productId").post(addtoCart);
-router.route("/removeItem/:productId").delete(removeFromCart);
+router.route("/removeItem/:productId").delete(removeProductFromCart);
 router.route("/").get(getUserCart);
 router.route("/update-item-quantity/:productId").patch(UpdateItemQuantity);
 router.route("/clear-cart").delete(clearCart);

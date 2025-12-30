@@ -1,9 +1,9 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/apiResponse.js";
+import { Product } from "../models/product.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { Cart } from "../models/cart.model.js";
 import mongoose from "mongoose";
-import { Product } from "../models/product.model.js";
 
 const getUserCart = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
@@ -113,48 +113,67 @@ const addtoCart = asyncHandler(async (req, res) => {
 const removeProductFromCart = asyncHandler(async (req, res) => {
   const { productId } = req.params;
   const userId = req.user?._id;
-  if (!userId) throw new ApiError(401, "User Id is Unauthorized");
   if (!productId) throw new ApiError(400, "Product Id is required");
+  if (!userId) throw new ApiError(401, "User Id is Unauthorized");
 
   // CHECK IF THE CART EXISTS
   const cart = await Cart.findOne({ user: userId });
-  if (!cart) throw new ApiError(404, "Cart not found");
+  if (!cart) throw new ApiError(404, "Cart does not found");
 
-  const updatedCart = await Cart.findOneAndUpdate(
-    { user: userId },
-    { $pull: { items: { product: productId } } },
-    { new: true }
+  const updatedCart = await Cart.findOne({ user: userId });
+
+  const itemIndex = updatedCart.items.findIndex(
+    (item) => item.product.toString() === productId
   );
 
   return res
     .status(200)
-    .json(new ApiResponse(200, updatedCart, "Item removed from cart successfully"));
+    .json(
+      new ApiResponse(200, updatedCart, "Item removed from cart successfully")
+    );
 });
 
 const UpdateItemQuantity = asyncHandler(async (req, res) => {
-  const itemId = req.params?.productId;
-  const updatedQuantity = req.body?.quantity;
-  if (!itemId) throw new ApiError(400, "Item id is required in params");
+  const userId = req.user?._id;
+  const productId = req.params?.productId;
+  const { quantity: updatedQuantity, size, color } = req.body;
 
-  const item = await Cart.findByIdAndUpdate(
-    itemId,
-    {
-      $set: {
-        quantity: updatedQuantity,
-      },
-    },
-    {
-      new: true,
-    }
+  if (!updatedQuantity || !size || !color)
+    throw new ApiError(400, "All fields are required");
+  if (!productId) throw new ApiError(400, "Item id is required in params");
+  if (!userId) throw new ApiError(401, "User Id is Unauthorized");
+
+  const product = await Product.findOne({ _id: productId });
+  if (!product) throw new ApiError(400, "Product doesn't found");
+
+  if (product.stock < updatedQuantity)
+    throw new ApiError(400, "Not enough stock available");
+
+  const cart = await Cart.findOne({ user: userId });
+  if (!cart) throw new ApiError(400, "Cart doesn't found");
+
+  const itemIndex = cart.items.findIndex(
+    (item) =>
+      item.product.toString() === productId &&
+      item.size === size &&
+      item.color === color
   );
-  if (!item) throw new ApiError(404, "Item does not found");
+
+  if (itemIndex !== -1) {
+    cart.items[itemIndex].quantity = updatedQuantity;
+  } else {
+    throw new ApiError(400, "No product found");
+  }
+
+  const updatedCart = await cart.save();
+  if (!updatedCart) throw new ApiError(500, "Failed to update item quantity");
 
   return res
     .status(200)
     .json(
       new ApiResponse(
         200,
-        item.quantity,
+        updatedCart.items[itemIndex],
         "Item's quantity updated successfully"
       )
     );
@@ -164,19 +183,31 @@ const clearCart = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
   if (!userId) throw new ApiError(400, "User Id is required");
 
-  const cart = await Cart.deleteMany({ user: userId });
+  const cart = await Cart.findOneAndUpdate(
+    { user: userId },
+    {
+      $set: {
+        items: [],
+      },
+    },
+    {
+      new: true,
+    }
+  );
   console.log(cart);
   if (!cart) throw new ApiError("Cart doesn't found");
 
   return res
     .status(200)
-    .json(new ApiResponse(200, {}, "Cart has been cleared successfully"));
+    .json(
+      new ApiResponse(200, cart, "Your cart has been cleared successfully")
+    );
 });
 
 export {
   clearCart,
   addtoCart,
   getUserCart,
-  removeFromCart,
+  removeProductFromCart,
   UpdateItemQuantity,
 };
