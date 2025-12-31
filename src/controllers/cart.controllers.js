@@ -112,24 +112,41 @@ const addtoCart = asyncHandler(async (req, res) => {
 
 const removeProductFromCart = asyncHandler(async (req, res) => {
   const { productId } = req.params;
+  const { color, size } = req.body;
   const userId = req.user?._id;
+  if (!color || !size)
+    throw new ApiError(
+      400,
+      "Color and size are required to identify the item to remove"
+    );
   if (!productId) throw new ApiError(400, "Product Id is required");
   if (!userId) throw new ApiError(401, "User Id is Unauthorized");
 
   // CHECK IF THE CART EXISTS
   const cart = await Cart.findOne({ user: userId });
-  if (!cart) throw new ApiError(404, "Cart does not found");
+  if (!cart) throw new ApiError(404, "Cart not found");
 
-  const updatedCart = await Cart.findOne({ user: userId });
-
-  const itemIndex = updatedCart.items.findIndex(
-    (item) => item.product.toString() === productId
+  const itemIndex = cart.items.findIndex(
+    (item) =>
+      item.product.toString() === productId &&
+      item.size === size &&
+      item.color === color
   );
+
+  if (itemIndex === -1) throw new ApiError(404, "Product not found");
+  // splice(start,no. of elements)
+  const removedEl = cart.items.splice(itemIndex, 1);
+
+  if (!removedEl || removedEl.length === 0)
+    throw new ApiError(500, "Failed to remove item from cart");
+
+  const cartSaved = await cart.save();
+  if (!cartSaved) throw new ApiError(500, "Failed to save cart after removal");
 
   return res
     .status(200)
     .json(
-      new ApiResponse(200, updatedCart, "Item removed from cart successfully")
+      new ApiResponse(200, removedEl, "Item removed from cart successfully")
     );
 });
 
