@@ -62,15 +62,15 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ["COD", "ONLINE"],
       required: true,
+      immutable: true,
     },
-    paymentInfo: {
-      razorpay_order_id: String,
-      razorpay_payment_id: String,
-      razorpay_signature: String,
+    payment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Payment",
     },
     paymentStatus: {
       type: String,
-      enum: ["PENDING", "PAID", "FAILED", "REFUNDED"],
+      enum: ["PENDING", "PAID", "FAILED"],
       default: "PENDING",
     },
     orderStatus: {
@@ -88,8 +88,14 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    paidAt: Date,
-    deliverAt: Date,
+    paidAt: {
+      type: Date,
+      default: null,
+    },
+    deliverAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

@@ -2,9 +2,11 @@ import mongoose from "mongoose";
 
 const paymentSchema = new mongoose.Schema(
   {
+    // FOR DB LOOKUP
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",
+      required: true,
     },
     status: {
       type: String,
@@ -20,17 +22,39 @@ const paymentSchema = new mongoose.Schema(
       type: String,
       default: "INR",
     },
+    // FOR VERIFICATION
     razorpay_order_id: {
       type: String,
       required: true,
+      unique: true,
     },
+
+    // POST PAYMENT
     razorpay_payment_id: {
       type: String,
-      required: [true, "Invalid Razorpay payment id"],
+      default: null,
     },
     razorpay_signature: {
       type: String,
-      required: [true, "Invalid Razorpay signature id"],
+      default: null,
+    },
+    paidAt: {
+      type: Date,
+      required: true,
+      default: null,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    recipt: {
+      type: String,
+      default: null,
+    },
+    faliureReason: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true }

@@ -1,42 +1,22 @@
-import Razorpay from "razorpay";
-import crypto, { sign } from "crypto";
-import fs from "fs";
-import { asyncHandler } from "../utils/asyncHandler";
-import { ApiResponse } from "../utils/apiResponse";
+import { Order } from "../models/order.model";
 import { Payment } from "../models/payment.model";
+import { ApiError } from "../utils/apiError";
+import { ApiResponse } from "../utils/apiResponse";
+import { asyncHandler } from "../utils/asyncHandler";
+import { razorpayInstance } from "../utils/razorpay.config";
 
-const createRazerPayOrder = asyncHandler(async (req, res) => {
-  // CREATE INSTANCE.
-  const instance = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  });
-
-  // CREATE OPTIONS.
-  const { amount } = req.body;
-  const options = {
-    amount: amount * 100,
-    currency: "INR",
-    receipt: "receipt_" + Date.now(),
-  };
-
-  // CREATE ORDER IN RAZORPAY.
-  const order = await instance.orders.create(options);
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, order, "Razorpay order created successfully"));
-});
-
+// VERIFY PAYMENT.
 const paymentVerification = asyncHandler(async (req, res) => {
-  const { orderId } = req?.params;
-  const { Razorpay_paymentId: paymentId, Razorpay_signature: signature } =
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
     req?.body?.paymentInfo;
 
-  const body = orderId + "|" + paymentId;
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
+    throw new ApiError(400, "Missing payment verification data");
+
+  const body = razorpay_order_id + "|" + razorpay_payment_id;
   const expectedSignature = crypto
     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-    .update(body.toString)
+    .update(body)
     .digest("hex");
 
   if (expectedSignature !== signature) {
@@ -51,19 +31,24 @@ const paymentVerification = asyncHandler(async (req, res) => {
       );
   }
 
+  // UPDATE PAYMENT RECORD
   const payment = await Payment.findOneAndUpdate(
-    { orderId },
+    { razorpay_order_id },
     {
-      razorpay_payment_id: paymentId,
-      razorpay_signature: signature,
-      status: "success",
+      razorpay_payment_id,
+      razorpay_signature,
+      status: "SUCCESS",
     },
     {
       new: true,
     }
   );
+  if (!payment) throw new ApiError(404, "Payment record not found");
+  const order = await Order.findOneAndUpdate({});
 
   return res
     .status(200)
     .json(new ApiResponse(200, payment, "Payment verified successfully"));
 });
+
+export { createRazerPayOrder, paymentVerification };

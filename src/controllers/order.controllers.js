@@ -1,13 +1,22 @@
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiResponse } from "../utils/apiResponse.js";
+import { Order } from "../models/order.model.js";
+import { Payment } from "../models/payment.model.js";
+import { Product } from "../models/product.model.js";
 import { ApiError } from "../utils/apiError.js";
+import { ApiResponse } from "../utils/apiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { razorpayInstance } from "../utils/razorpay.config.js";
 
 const createOrder = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
-  const { orderItems, paymentMethod, shippingAddress } = req.body;
-  let totalAmount = 0;
+  if (!userId) throw new ApiError(401, "Unauthorized user");
 
-  // Validate shippingAddress fields
+  const { orderItems, paymentMethod, shippingAddress } = req.body;
+
+  // Validate business data
+  if (!paymentMethod) throw new ApiError(404, "Payment method not found");
+  if (!orderItems || orderItems.length === 0) {
+    throw new ApiError(400, "No items in order");
+  }
   if (shippingAddress) {
     const { fullname, address, city, state, pincode, phone, email } =
       shippingAddress;
@@ -35,8 +44,85 @@ const createOrder = asyncHandler(async (req, res) => {
     }
   }
 
-  if (!orderItems || orderItems.length === 0) {
-    throw new ApiError(400, "No items in order");
+  // Calculate total amount and validate products
+  let totalAmount = 0;
+  const validatedOrderItems = [];
+
+  for (const item of orderItems) {
+    const product = await Product.findById(item.product);
+    if (!product) {
+      throw new ApiError(404, `Product ${item.product} not found`);
+    }
+    if (product.stock < item.quantity) {
+      throw new ApiError(400, `Insufficient stock for product ${product.name}`);
+    }
+    totalAmount += product.price * item.quantity;
+    validatedOrderItems.push({
+      product: item.product,
+      quantity: item.quantity,
+      price: product.price,
+    });
+  }
+
+  // CREATE ORDER IN DB
+  const order = await Order.create({
+    user: userId,
+    orderItems: validatedOrderItems,
+    shippingAddress,
+    paymentMethod,
+    totalAmount,
+    orderStatus: "CREATED",
+    paymentStatus: "PENDING",
+  });
+
+  // DECIDE PAYMENT METHOD.
+  if (paymentMethod === "COD") {
+    // CREATE THE ORDER (COD MODE)
+
+    return res
+      .status(201)
+      .json(new ApiResponse(201, order, "Order created successfully"));
+  } else {
+    // CREATE RAZORPAY ORDER (ONLINE METHOD)
+
+    const options = {
+      amount: totalAmount * 100, // amount in paise
+      currency: "INR",
+      receipt: `receipt_${order._id}`,
+    };
+
+    const razorpayOrder = await razorpayInstance.orders.create(options);
+    if (!razorpayOrder) {
+      throw new ApiError(500, "Failed to create Razorpay order");
+    }
+
+    // CREATE PAYMENT RECORD IN DB
+    const payment = await Payment.create({
+      orderId: order._id,
+      amount: totalAmount,
+      currency: options.currency,
+      status: "PENDING",
+      razorpay_order_id: razorpayOrder.id,
+      recipt: razorpayOrder.receipt,
+      paidAt: null,
+      isVerified: false, // FOR PAYMENT VERIFICATION
+    });
+
+    if (!payment) throw new ApiError(500, "Failed to create payment record");
+
+    // UPDATE ORDER WITH PAYMENT REFRENCE
+    order.payment = payment._id;
+    await order.save();
+
+    return res
+      .status(201)
+      .json(
+        new ApiResponse(
+          201,
+          { order, razorpayOrder },
+          "Order created successfully"
+        )
+      );
   }
 });
 
