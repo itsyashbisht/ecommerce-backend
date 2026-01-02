@@ -51,6 +51,12 @@ const addtoCart = asyncHandler(async (req, res) => {
   const product = await Product.findById(productId);
   if (!product) throw new ApiError(400, "Prouduct not found");
 
+  if (!product.colors.includes(color))
+    throw new ApiError(400, "Selected color is not available for this product");
+
+  if (!product.sizes.includes(size))
+    throw new ApiError(400, "Selected size is not available for this product");
+
   // CHECK STOCK
   if (product.stock < quantity)
     throw new ApiError(400, "Not enough stock available");

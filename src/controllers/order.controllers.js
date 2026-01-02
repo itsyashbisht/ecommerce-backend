@@ -53,6 +53,12 @@ const createOrder = asyncHandler(async (req, res) => {
     if (!product) {
       throw new ApiError(404, `Product ${item.product} not found`);
     }
+    if (!item.color || !product.colors.includes(item.color)) {
+      throw new ApiError(400, `Invalid color for product ${product.name}`);
+    }
+    if (!item.size || !product.sizes.includes(item.size)) {
+      throw new ApiError(400, `Invalid size for product ${product.name}`);
+    }
     if (product.stock < item.quantity) {
       throw new ApiError(400, `Insufficient stock for product ${product.name}`);
     }
@@ -61,6 +67,8 @@ const createOrder = asyncHandler(async (req, res) => {
       product: item.product,
       quantity: item.quantity,
       price: product.price,
+      color: item.color,
+      size: item.size,
     });
   }
 
@@ -119,8 +127,8 @@ const createOrder = asyncHandler(async (req, res) => {
       .json(
         new ApiResponse(
           201,
-          { order, razorpayOrder },
-          "Order created successfully"
+          { order, recipt: razorpayOrder.receipt, razorpayOrder },
+          "Order created successfully, proceed to payment"
         )
       );
   }

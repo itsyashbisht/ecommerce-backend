@@ -21,6 +21,14 @@ const orderSchema = new mongoose.Schema(
           type: Number,
           required: [true, "Price of the product is required"],
         },
+        color: {
+          type: String,
+          required: [true, "Color is required"],
+        },
+        size: {
+          type: Number,
+          required: [true, "Size is required"],
+        },
       },
     ],
 

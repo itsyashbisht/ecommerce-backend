@@ -40,7 +40,6 @@ const paymentSchema = new mongoose.Schema(
     },
     paidAt: {
       type: Date,
-      required: true,
       default: null,
     },
     isVerified: {
