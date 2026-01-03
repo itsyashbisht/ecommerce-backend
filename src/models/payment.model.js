@@ -51,7 +51,7 @@ const paymentSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    faliureReason: {
+    failureReason: {
       type: String,
       default: null,
     },

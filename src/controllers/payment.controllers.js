@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import crypto from "crypto";
 import { Order } from "../models/order.model.js";
 import { Payment } from "../models/payment.model.js";
 import { ApiError } from "../utils/apiError.js";
@@ -16,6 +17,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 const paymentVerification = asyncHandler(async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
     req?.body?.paymentInfo;
+
+  console.log("body:", req.body);
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
     throw new ApiError(400, "Missing payment verification data");
@@ -47,12 +50,16 @@ const paymentVerification = asyncHandler(async (req, res) => {
       .update(body)
       .digest("hex");
 
+    console.log("BACKEND BODY:", razorpay_order_id + "|" + razorpay_payment_id);
+    console.log("EXPECTED:", expectedSignature);
+    console.log("RECEIVED:", razorpay_signature);
+
     if (expectedSignature !== razorpay_signature) {
       payment.status = "FAILED";
-      payment.faliureReason = "Invalid signature";
+      payment.failureReason = "Invalid signature";
       await payment.save({ session });
 
-      throw new ApiError(400, "Payment verification failed");
+      throw new ApiError(400, "Payment verification failed, Invalid signature");
     }
 
     // IF SIGNATURE VALID -> UPDATE PAYMENT.
@@ -119,7 +126,7 @@ const razorpayWebhook = asyncHandler(async (req, res) => {
   }
 
   // PARSE WEBHOOK EVENT.
-  const event = json.parse(req.body.toString());
+  const event = JSON.parse(req.body.toString());
 
   // HANDLE PAYMENT-CAPTURED.
   if (event.event === "payment.captured") {
@@ -169,7 +176,7 @@ const razorpayWebhook = asyncHandler(async (req, res) => {
   }
 
   // HANDLE PAYMENT-FAILED.
-  if (event.event === "paymen.failed") {
+  if (event.event === "payment.failed") {
     const razorpay_order_id = event.payload.payment.entity.order_id;
 
     const payment = await Payment.findOne({ razorpay_order_id });
@@ -181,11 +188,13 @@ const razorpayWebhook = asyncHandler(async (req, res) => {
       await payment.save();
     }
 
-    return res.status(200).json(200, {}, "Payment failed handled successfully");
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "Payment failed handled successfully"));
   }
 
   // IGNORE OTHER EVENTS SAFELY
-  return res.status(200).json(200, {}, "Event ignored");
+  return res.status(200).json(new ApiResponse(200, {}, "Event ignored"));
 });
 
 export { paymentVerification, razorpayWebhook };

@@ -1,3 +1,4 @@
+import { Cart } from "../models/cart.model.js";
 import { Order } from "../models/order.model.js";
 import { Payment } from "../models/payment.model.js";
 import { Product } from "../models/product.model.js";
@@ -46,10 +47,12 @@ const createOrder = asyncHandler(async (req, res) => {
 
   // Calculate total amount and validate products
   let totalAmount = 0;
-  const validatedOrderItems = [];
+  let validatedOrderItems = [];
 
   for (const item of orderItems) {
+    // CHECKS IN PRODUCTS DB
     const product = await Product.findById(item.product);
+
     if (!product) {
       throw new ApiError(404, `Product ${item.product} not found`);
     }
@@ -72,6 +75,18 @@ const createOrder = asyncHandler(async (req, res) => {
     });
   }
 
+  // CHECKS WETHER THE ORDER ITEMS ARE IN CART OR NOT.
+  const cart = await Cart.findOne({ user: userId });
+  if (!cart) throw new ApiError(404, "Cart not found");
+  if (cart.items.length === 0) throw new ApiError(404, "No item found in cart");
+
+  const cartItemsIds = cart.items.map((item) => item.product._id.toString());
+
+  validatedOrderItems = validatedOrderItems.filter((item) =>
+    cartItemsIds.includes(item.product)
+  );
+  console.log(validatedOrderItems);
+
   // CREATE ORDER IN DB
   const order = await Order.create({
     user: userId,
@@ -86,6 +101,18 @@ const createOrder = asyncHandler(async (req, res) => {
   // DECIDE PAYMENT METHOD.
   if (paymentMethod === "COD") {
     // CREATE THE ORDER (COD MODE)
+
+    // & REMOVE FROM THE CART.
+    const cart = await Cart.findOne({ user: userId });
+    const orderedProductIds = validatedOrderItems.map((item) =>
+      item.product.toString()
+    );
+    cart.items = cart.items.filter(
+      (itm) => !orderedProductIds.includes(itm.product._id.toString())
+    );
+
+    // SAVING CART DOCUMENT.
+    await cart.save();
 
     return res
       .status(201)
@@ -122,6 +149,17 @@ const createOrder = asyncHandler(async (req, res) => {
     order.payment = payment._id;
     await order.save();
 
+    // & REMOVE FROM THE CART.
+    const cart = await Cart.findOne({ user: userId });
+    const orderedProductIds = validatedOrderItems.map((item) =>
+      item.product.toString()
+    );
+    cart.items = cart.items.filter(
+      (itm) => !orderedProductIds.includes(itm.product._id.toString())
+    );
+
+    await cart.save();
+
     return res
       .status(201)
       .json(
@@ -134,4 +172,16 @@ const createOrder = asyncHandler(async (req, res) => {
   }
 });
 
-export { createOrder };
+const getMyOrders = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+  if (!userId) throw new ApiError(401, "Unauthorized user");
+
+  const orders = await Order.find({ user: userId });
+  if (!orders) throw new ApiError(404, "Orders not found");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { orders }, "Orders fetched successfully"));
+});
+
+export { createOrder, getMyOrders };
