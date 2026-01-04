@@ -2,6 +2,7 @@ import { Cart } from "../models/cart.model.js";
 import { Order } from "../models/order.model.js";
 import { Payment } from "../models/payment.model.js";
 import { Product } from "../models/product.model.js";
+import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -184,4 +185,154 @@ const getMyOrders = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, { orders }, "Orders fetched successfully"));
 });
 
-export { createOrder, getMyOrders };
+const getOrderById = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  if (!orderId) throw new ApiError(400, "Order Id is required");
+
+  const order = await Order.findById(orderId);
+  if (!order) throw new ApiError(404, "Order not found");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, order, "Order fetched succesfully"));
+});
+
+const cancelOrder = asyncHandler(async (req, res) => {
+  const { orderId } = req.params;
+  if (!orderId) throw new ApiError(400, "Order Id is required");
+
+  const order = await Order.findById(orderId);
+  if (!order) throw new ApiError(404, "Order not found");
+
+  if (
+    order.orderStatus === "DELIVERED" ||
+    order.orderStatus === "CANCELLED" ||
+    order.orderStatus === "OUT_FOR_DELIVERY"
+  )
+    throw new ApiError(
+      400,
+      `Order cannot be cancelled because it is already ${order.orderStatus.toLowerCase().replaceAll("_", " ")}`
+    );
+
+  // ELSE -> CANCEL THE ORDER
+  order.orderStatus = "CANCELLED";
+  order.canceledAt = new Date();
+  await order.save();
+
+  // CHANGE REFUND STATUS.
+  if (order.paymentMethod === "ONLINE") {
+    order.refundStatus = "PENDING";
+    order.isRefundRequested = true;
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, order, "Your order has been canceled successfully")
+    );
+});
+
+// ADMIN.
+const updateOrderStatus = asyncHandler(async (req, res) => {
+  const user = req.user;
+  const { orderId } = req.params;
+  const { updatedOrderStatus } = req.body;
+
+  if (!user) throw new ApiError(404, "No user found");
+  if (!orderId) throw new ApiError(400, "Order Id is required");
+  if (!updatedOrderStatus)
+    throw new ApiError(400, "New order status is required to updated");
+
+  if (user.role !== "ADMIN") throw new ApiError(400, "Unauthorized access");
+
+  // UPDATE ORDER STATUS.
+  const order = await Order.findById(orderId);
+  if (!order) throw new ApiError(404, "Order not found");
+
+  // EXTRACT ENUM VALUES
+  const validStatuses = Order.schema.path("orderStatus").enumValues;
+
+  if (!validStatuses.includes(updatedOrderStatus)) {
+    throw new ApiError(
+      400,
+      `Invalid order status. Allowed values are: ${validStatuses.join(", ")}`
+    );
+  }
+
+  order.orderStatus = updatedOrderStatus;
+  await order.save();
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { orderStatus: order.orderStatus },
+        "Order status updated successfullyf"
+      )
+    );
+});
+
+const getAllOrders = asyncHandler(async (req, res) => {
+  const {
+    page = 1,
+    limit = 10,
+    sortBy = "createdAt",
+    sortType = "asc",
+    refundStatus,
+    orderStatus,
+    paymentStatus,
+    paymentMethod,
+  } = req.query;
+
+  const user = req.user;
+  console.log(user);
+  if (!user) throw new ApiError(404, "No user found");
+
+  if (user.role !== "ADMIN") throw new ApiError(400, "Unauthorized access");
+
+  // ESLE FOR ADMIN -> CREATING OBJ TO FILTER ACCORDINGLY IN DB.
+  const matchStage = {};
+  if (refundStatus) matchStage.refundStatus = refundStatus;
+  if (orderStatus) matchStage.orderStatus = orderStatus;
+  if (paymentStatus) matchStage.paymentStatus = paymentStatus;
+  if (paymentMethod) matchStage.paymentMethod = paymentMethod;
+
+  const settingSortType = sortType === "asc" ? 1 : -1; // 1 = ASCENDING & -1 = DESCENDING ORDER.
+
+  const orders = await Order.aggregate([
+    {
+      $match: matchStage,
+    },
+    {
+      $sort: {
+        [sortBy]: settingSortType,
+      },
+    },
+
+    {
+      $skip: parseInt((page - 1) * limit),
+    },
+    {
+      $limit: parseInt(limit),
+    },
+    // {
+    //   $project: {
+
+    //   }
+    // }
+  ]);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, orders, "Orders fetched successfully"));
+});
+
+export {
+  cancelOrder,
+  createOrder,
+  getAllOrders,
+  getMyOrders,
+  getOrderById,
+  updateOrderStatus,
+};

@@ -104,6 +104,19 @@ const orderSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    canceledAt: {
+      type: Date,
+      default: null,
+    },
+    isRefundRequested: {
+      type: Boolean,
+      default: false,
+    },
+    refundStatus: {
+      type: String,
+      enum: ["NOT_REQUIRED", "PENDING", "PROCESSING", "REFUNDED", "FAILED"],
+      default: "NOT_REQUIRED",
+    },
   },
   {
     timestamps: true,

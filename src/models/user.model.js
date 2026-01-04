@@ -51,7 +51,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["user", "admin", "seller"],
+      enum: ["USER", "ADMIN", "SELLER"],
       required: [true, "Invalid role"],
       default: "user",
       lowercase: true,

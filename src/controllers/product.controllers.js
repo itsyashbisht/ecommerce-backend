@@ -21,7 +21,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
       },
     },
     {
-      $skip: parseInt((page - 1) * 10),
+      $skip: parseInt((page - 1) * limit),
     },
     {
       $limit: parseInt(limit),
