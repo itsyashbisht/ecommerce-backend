@@ -16,13 +16,13 @@ app.use(cookieParser());
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 
+import { razorpayWebhook } from "./controllers/payment.controllers.js";
 import cartRouter from "./routes/cartRoutes.js";
 import orderRouter from "./routes/orderRoutes.js";
+import paymentRouter from "./routes/paymentRoutes.js";
 import productRouter from "./routes/productRoutes.js";
 import reviewRouter from "./routes/reviewRoutes.js";
 import userRouter from "./routes/userRoutes.js";
-import paymentRouter from "./routes/paymentRoutes.js";
-import { razorpayWebhook } from "./controllers/payment.controllers.js";
 
 // ROUTES.
 app.use("/api/v1/user", userRouter);

@@ -2,7 +2,6 @@ import { Cart } from "../models/cart.model.js";
 import { Order } from "../models/order.model.js";
 import { Payment } from "../models/payment.model.js";
 import { Product } from "../models/product.model.js";
-import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";

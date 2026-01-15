@@ -78,7 +78,7 @@ const registerUser = asyncHandler(async (req, res) => {
     city,
     state,
     phoneNumber,
-    role = "user",
+    role = "USER",
   } = req.body;
 
   //2. VALIDATIONS
@@ -109,7 +109,7 @@ const registerUser = asyncHandler(async (req, res) => {
     " -password -refreshToken"
   );
   if (!createdUser)
-    throw new ApiError(500, "Something wend wrong while creating new user");
+    throw new ApiError(500, "Something went wrong while creating new user");
 
   //6. RESPONSE
   return res
