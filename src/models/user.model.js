@@ -53,7 +53,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["USER", "ADMIN", "SELLER"],
       required: [true, "Invalid role"],
-      default: "user",
+      default: "USER",
       lowercase: true,
     },
     refreshToken: {
