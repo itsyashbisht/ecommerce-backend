@@ -32,8 +32,8 @@ const getUserCart = asyncHandler(async (req, res) => {
         items: cart.items,
         totalAmount,
       },
-      "Successfully fetched user cart"
-    )
+      "Successfully fetched user cart",
+    ),
   );
 });
 
@@ -87,7 +87,7 @@ const addtoCart = asyncHandler(async (req, res) => {
     (item) =>
       item.product.toString() === productId &&
       item.size === size &&
-      item.color === color
+      item.color === color,
   );
 
   // IF EXISTS, INCREASE QUANTITY
@@ -113,17 +113,18 @@ const addtoCart = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, cart, "Item added to cart successfully"));
+    .json(new ApiResponse(200, cartSaved, "Item added to cart successfully"));
 });
 
 const removeProductFromCart = asyncHandler(async (req, res) => {
   const { productId } = req.params;
   const { color, size } = req.body;
+  console.log(req.body, productId);
   const userId = req.user?._id;
   if (!color || !size)
     throw new ApiError(
       400,
-      "Color and size are required to identify the item to remove"
+      "Color and size are required to identify the item to remove",
     );
   if (!productId) throw new ApiError(400, "Product Id is required");
   if (!userId) throw new ApiError(401, "User Id is Unauthorized");
@@ -132,12 +133,15 @@ const removeProductFromCart = asyncHandler(async (req, res) => {
   const cart = await Cart.findOne({ user: userId });
   if (!cart) throw new ApiError(404, "Cart not found");
 
+  console.log(cart);
+
   const itemIndex = cart.items.findIndex(
     (item) =>
-      item.product.toString() === productId &&
+      item._id.toString() === productId.toString() &&
       item.size === size &&
-      item.color === color
+      item.color === color,
   );
+  console.log(itemIndex);
 
   if (itemIndex === -1) throw new ApiError(404, "Product not found");
   // splice(start,no. of elements)
@@ -152,7 +156,7 @@ const removeProductFromCart = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, removedEl, "Item removed from cart successfully")
+      new ApiResponse(200, removedEl, "Item removed from cart successfully"),
     );
 });
 
@@ -179,7 +183,7 @@ const UpdateItemQuantity = asyncHandler(async (req, res) => {
     (item) =>
       item.product.toString() === productId &&
       item.size === size &&
-      item.color === color
+      item.color === color,
   );
 
   if (itemIndex !== -1) {
@@ -197,8 +201,8 @@ const UpdateItemQuantity = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         updatedCart.items[itemIndex],
-        "Item's quantity updated successfully"
-      )
+        "Item's quantity updated successfully",
+      ),
     );
 });
 
@@ -215,7 +219,7 @@ const clearCart = asyncHandler(async (req, res) => {
     },
     {
       new: true,
-    }
+    },
   );
   console.log(cart);
   if (!cart) throw new ApiError("Cart doesn't found");
@@ -223,7 +227,7 @@ const clearCart = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, cart, "Your cart has been cleared successfully")
+      new ApiResponse(200, cart, "Your cart has been cleared successfully"),
     );
 });
 
