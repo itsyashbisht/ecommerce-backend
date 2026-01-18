@@ -119,7 +119,7 @@ const addtoCart = asyncHandler(async (req, res) => {
 const removeProductFromCart = asyncHandler(async (req, res) => {
   const { productId } = req.params;
   const { color, size } = req.body;
-  console.log(req.body, productId);
+
   const userId = req.user?._id;
   if (!color || !size)
     throw new ApiError(
@@ -133,15 +133,12 @@ const removeProductFromCart = asyncHandler(async (req, res) => {
   const cart = await Cart.findOne({ user: userId });
   if (!cart) throw new ApiError(404, "Cart not found");
 
-  console.log(cart);
-
   const itemIndex = cart.items.findIndex(
     (item) =>
       item._id.toString() === productId.toString() &&
       item.size === size &&
       item.color === color,
   );
-  console.log(itemIndex);
 
   if (itemIndex === -1) throw new ApiError(404, "Product not found");
   // splice(start,no. of elements)

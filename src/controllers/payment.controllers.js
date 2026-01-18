@@ -29,7 +29,7 @@ const paymentVerification = asyncHandler(async (req, res) => {
 
   try {
     const payment = await Payment.findOne({ razorpay_order_id }).session(
-      session
+      session,
     ); // ENSURES READ/WRITE CONSISTENCY
     if (!payment) throw new ApiError(404, "Payment not found");
 
@@ -98,14 +98,30 @@ const paymentVerification = asyncHandler(async (req, res) => {
           orderId: order._id,
           recipt: payment.recipt,
         },
-        "Payment verified successfully"
-      )
+        "Payment verified successfully",
+      ),
     );
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
     throw error;
   }
+});
+
+const getRazorpayKey = asyncHandler(async (req, res) => {
+  const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+  if (!razorpayKeyId)
+    throw new ApiError(500, "Razorpay key not found in environment variables");
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        razorpayKeyId,
+      },
+      "Successfully fetched razorpaykeyId",
+    ),
+  );
 });
 
 // TODO: Enable & test Razorpay webhooks before production
@@ -197,4 +213,4 @@ const razorpayWebhook = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, {}, "Event ignored"));
 });
 
-export { paymentVerification, razorpayWebhook };
+export { paymentVerification, razorpayWebhook, getRazorpayKey };
