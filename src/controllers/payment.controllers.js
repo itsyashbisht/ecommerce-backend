@@ -50,10 +50,6 @@ const paymentVerification = asyncHandler(async (req, res) => {
       .update(body)
       .digest("hex");
 
-    console.log("BACKEND BODY:", razorpay_order_id + "|" + razorpay_payment_id);
-    console.log("EXPECTED:", expectedSignature);
-    console.log("RECEIVED:", razorpay_signature);
-
     if (expectedSignature !== razorpay_signature) {
       payment.status = "FAILED";
       payment.failureReason = "Invalid signature";

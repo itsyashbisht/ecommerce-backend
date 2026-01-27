@@ -9,15 +9,11 @@ import { razorpayInstance } from "../utils/razorpay.config.js";
 
 const createOrder = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
+  const { paymentMethod, shippingAddress } = req.body;
   if (!userId) throw new ApiError(401, "Unauthorized user");
-
-  const { orderItems, paymentMethod, shippingAddress } = req.body;
 
   // Validate business data
   if (!paymentMethod) throw new ApiError(404, "Payment method not found");
-  if (!orderItems || orderItems.length === 0) {
-    throw new ApiError(400, "No items in order");
-  }
   if (shippingAddress) {
     const { fullname, address, city, state, pincode, phone, email } =
       shippingAddress;
@@ -45,11 +41,16 @@ const createOrder = asyncHandler(async (req, res) => {
     }
   }
 
+  // FETCH USER CART.
+  const cart = await Cart.findOne({ user: userId });
+  if (!cart) throw new ApiError(404, "Cart not found");
+  if (cart.items.length === 0) throw new ApiError(404, "No item found in cart");
+
   // Calculate total amount and validate products
   let totalAmount = 0;
   let validatedOrderItems = [];
 
-  for (const item of orderItems) {
+  for (const item of cart.items) {
     // CHECKS IN PRODUCTS DB
     const product = await Product.findById(item.product);
 
@@ -65,6 +66,7 @@ const createOrder = asyncHandler(async (req, res) => {
     if (product.stock < item.quantity) {
       throw new ApiError(400, `Insufficient stock for product ${product.name}`);
     }
+
     totalAmount += product.price * item.quantity;
     validatedOrderItems.push({
       product: item.product,
@@ -74,18 +76,6 @@ const createOrder = asyncHandler(async (req, res) => {
       size: item.size,
     });
   }
-
-  // CHECKS WETHER THE ORDER ITEMS ARE IN CART OR NOT.
-  const cart = await Cart.findOne({ user: userId });
-  if (!cart) throw new ApiError(404, "Cart not found");
-  if (cart.items.length === 0) throw new ApiError(404, "No item found in cart");
-
-  const cartItemsIds = cart.items.map((item) => item.product._id.toString());
-
-  validatedOrderItems = validatedOrderItems.filter((item) =>
-    cartItemsIds.includes(item.product)
-  );
-  console.log(validatedOrderItems);
 
   // CREATE ORDER IN DB
   const order = await Order.create({
@@ -105,10 +95,10 @@ const createOrder = asyncHandler(async (req, res) => {
     // & REMOVE FROM THE CART.
     const cart = await Cart.findOne({ user: userId });
     const orderedProductIds = validatedOrderItems.map((item) =>
-      item.product.toString()
+      item.product.toString(),
     );
     cart.items = cart.items.filter(
-      (itm) => !orderedProductIds.includes(itm.product._id.toString())
+      (itm) => !orderedProductIds.includes(itm.product._id.toString()),
     );
 
     // SAVING CART DOCUMENT.
@@ -152,22 +142,22 @@ const createOrder = asyncHandler(async (req, res) => {
     // & REMOVE FROM THE CART.
     const cart = await Cart.findOne({ user: userId });
     const orderedProductIds = validatedOrderItems.map((item) =>
-      item.product.toString()
+      item.product.toString(),
     );
     cart.items = cart.items.filter(
-      (itm) => !orderedProductIds.includes(itm.product._id.toString())
+      (itm) => !orderedProductIds.includes(itm.product._id.toString()),
     );
 
     await cart.save();
 
     return res
-      .status(201)
+      .status(200)
       .json(
         new ApiResponse(
-          201,
+          200,
           { order, recipt: razorpayOrder.receipt, razorpayOrder },
-          "Order created successfully, proceed to payment"
-        )
+          "Order created successfully, proceed to payment",
+        ),
       );
   }
 });
@@ -210,7 +200,7 @@ const cancelOrder = asyncHandler(async (req, res) => {
   )
     throw new ApiError(
       400,
-      `Order cannot be cancelled because it is already ${order.orderStatus.toLowerCase().replaceAll("_", " ")}`
+      `Order cannot be cancelled because it is already ${order.orderStatus.toLowerCase().replaceAll("_", " ")}`,
     );
 
   // ELSE -> CANCEL THE ORDER
@@ -227,7 +217,7 @@ const cancelOrder = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, order, "Your order has been canceled successfully")
+      new ApiResponse(200, order, "Your order has been canceled successfully"),
     );
 });
 
@@ -254,7 +244,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
   if (!validStatuses.includes(updatedOrderStatus)) {
     throw new ApiError(
       400,
-      `Invalid order status. Allowed values are: ${validStatuses.join(", ")}`
+      `Invalid order status. Allowed values are: ${validStatuses.join(", ")}`,
     );
   }
 
@@ -267,8 +257,8 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         { orderStatus: order.orderStatus },
-        "Order status updated successfullyf"
-      )
+        "Order status updated successfullyf",
+      ),
     );
 });
 

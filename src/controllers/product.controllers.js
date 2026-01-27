@@ -54,7 +54,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
 const createProduct = asyncHandler(async (req, res) => {
   const { name, brand, category, description, price, sizes, colors, stock } =
     req.body;
-  console.log(req.body, req.files);
+  console.log(req.body);
 
   if (
     !name ||
@@ -68,7 +68,7 @@ const createProduct = asyncHandler(async (req, res) => {
   )
     throw new ApiError(400, "All fields are required");
 
-  const imagesLocalPaths = req.files?.images.map((img) => img.path) || [];
+  const imagesLocalPaths = req.files?.images?.map((img) => img.path) || [];
   console.log(imagesLocalPaths);
 
   if (imagesLocalPaths.length < 2)
@@ -93,10 +93,10 @@ const createProduct = asyncHandler(async (req, res) => {
     brand,
     category,
     description,
-    price,
-    sizes,
+    price: Number(price),
+    sizes: sizes.split(",").map(Number),
     colors,
-    stock,
+    stock: Number(stock),
     images: productImages,
   });
   if (!product)
@@ -143,13 +143,13 @@ const updateProductDetails = asyncHandler(async (req, res) => {
     },
     {
       new: true,
-    }
+    },
   );
 
   if (!updatedProduct)
     throw new ApiError(
       500,
-      "Something went wrong while updating product details"
+      "Something went wrong while updating product details",
     );
 
   return res
@@ -158,8 +158,8 @@ const updateProductDetails = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         updatedProduct,
-        "Product details updated successfully"
-      )
+        "Product details updated successfully",
+      ),
     );
 });
 
@@ -175,7 +175,7 @@ const updateProductImages = asyncHandler(async (req, res) => {
   if (!updatedImagesURLs)
     throw new ApiError(
       500,
-      "Something went wrong while uploading the images to cloudinary"
+      "Something went wrong while uploading the images to cloudinary",
     );
 
   const updatedImages = await Product.findByIdAndUpdate(
@@ -187,7 +187,7 @@ const updateProductImages = asyncHandler(async (req, res) => {
     },
     {
       new: true,
-    }
+    },
   );
   if (!updatedImages) throw new ApiError(404, "Product not found");
 
