@@ -225,6 +225,7 @@ const cancelOrder = asyncHandler(async (req, res) => {
 const updateOrderStatus = asyncHandler(async (req, res) => {
   const user = req.user;
   const { orderId } = req.params;
+  console.log(req.body);
   const { updatedOrderStatus } = req.body;
 
   if (!user) throw new ApiError(404, "No user found");
@@ -257,7 +258,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         { orderStatus: order.orderStatus },
-        "Order status updated successfullyf",
+        "Order status updated successfully",
       ),
     );
 });
@@ -280,7 +281,7 @@ const getAllOrders = asyncHandler(async (req, res) => {
 
   if (user.role !== "ADMIN") throw new ApiError(400, "Unauthorized access");
 
-  // ESLE FOR ADMIN -> CREATING OBJ TO FILTER ACCORDINGLY IN DB.
+  // ElSE FOR ADMIN -> CREATING OBJ TO FILTER ACCORDINGLY IN DB.
   const matchStage = {};
   if (refundStatus) matchStage.refundStatus = refundStatus;
   if (orderStatus) matchStage.orderStatus = orderStatus;
@@ -317,6 +318,39 @@ const getAllOrders = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, orders, "Orders fetched successfully"));
 });
 
+const updatePaymentStatusByOrderId = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+  const { paymentStatus } = req.body;
+  if (!userId) throw new ApiError(401, "Unauthorized access");
+
+  const { orderId } = req.params;
+  if (!orderId) throw new ApiError(400, "Order Id is required in params");
+
+  const validStatuses = Order.schema.path("paymentStatus").enumValues;
+  if (!validStatuses.includes(paymentStatus))
+    throw new ApiError(
+      400,
+      `Invalid Payment status. Allowed values are: ${validStatuses.join(", ")}`,
+    );
+
+  const order = await Order.findByIdAndUpdate(
+    orderId,
+    {
+      $set: {
+        paymentStatus,
+      },
+    },
+    {
+      new: true,
+    },
+  );
+  if (!order) throw new ApiError(404, "Order Not Found");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, order, "Payment Status updated successfully"));
+});
+
 export {
   cancelOrder,
   createOrder,
@@ -324,4 +358,5 @@ export {
   getMyOrders,
   getOrderById,
   updateOrderStatus,
+  updatePaymentStatusByOrderId,
 };

@@ -1,8 +1,8 @@
+import jwt from "jsonwebtoken";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -18,7 +18,7 @@ const generateAccessAndRefreshToken = async (userId) => {
   } catch (error) {
     throw new MongoAPIError(
       500,
-      "Something went wrong while generating access and refresh Tokens"
+      "Something went wrong while generating access and refresh Tokens",
     );
   }
 };
@@ -31,7 +31,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   try {
     const decodedToken = jwt.verify(
       incomingRefreshToken,
-      process.env.REFRESH_TOKEN_SECRET
+      process.env.REFRESH_TOKEN_SECRET,
     );
 
     // RETRIVING TOKEN FROM USER FROM DB
@@ -58,12 +58,21 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         new ApiResponse(
           200,
           { accessToken, refreshToken: newRefreshToken },
-          "Access token refreshed successfully"
-        )
+          "Access token refreshed successfully",
+        ),
       );
   } catch (error) {
     throw new ApiError(401, error?.message || "Invalid refresh token");
   }
+});
+
+const getMe = asyncHandler(async (req, res) => {
+  const user = req?.user;
+  if (!user) throw new ApiError(401, "Unauthorized access");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Fetched your details"));
 });
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -106,7 +115,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   //5. REMOVING PASSWORD AND REFRESH TOKEN FROM RESPONSE
   const createdUser = await User.findById(user._id).select(
-    " -password -refreshToken"
+    " -password -refreshToken",
   );
   if (!createdUser)
     throw new ApiError(500, "Something went wrong while creating new user");
@@ -125,7 +134,7 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!email || !username || !password)
     throw new ApiError(400, "All fields are required");
 
-  // CHECK WETHER THE USER EXISTS OR NOT
+  // CHECK WHETHER THE USER EXISTS OR NOT
   const user = await User.findOne({ $or: [{ username }, { email }] });
   if (!user) throw new ApiError(400, "User does not exists");
 
@@ -135,12 +144,12 @@ const loginUser = asyncHandler(async (req, res) => {
 
   // ACCESS AND REFRESH TOKENS
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
-    user._id
+    user._id,
   );
 
   // SEND COOKIES
   const loggedInUser = await User.findById(user._id).select(
-    " -password -refreshToken"
+    " -password -refreshToken",
   );
 
   const options = {
@@ -157,8 +166,8 @@ const loginUser = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         { user: loggedInUser, accessToken },
-        "User logged in successfully"
-      )
+        "User logged in successfully",
+      ),
     );
 });
 
@@ -173,7 +182,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     },
     {
       new: true,
-    }
+    },
   );
 
   const options = {
@@ -231,7 +240,7 @@ const updateUserDetails = asyncHandler(async (req, res) => {
     },
     {
       new: true,
-    }
+    },
   ).select(" -password");
 
   if (!updatedUser)
@@ -240,7 +249,7 @@ const updateUserDetails = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, updatedUser, "User details updated successfully")
+      new ApiResponse(200, updatedUser, "User details updated successfully"),
     );
 });
 
@@ -268,11 +277,67 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   }
 });
 
+// ADMIN'S CONTROLLER
+const getAllUsers = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+  if (!userId) throw new ApiError(401, "Unauthorized access");
+
+  if (req.user?.role === "ADMIN") {
+    const users = await User.find().select("-password -refreshToken");
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { users, count: users.length },
+          "All users fetched successfully",
+        ),
+      );
+  } else {
+    throw new ApiError(401, "Unauthorized access");
+  }
+});
+
+const setRoleToAdmin = asyncHandler(async (req, res) => {
+  const userId = req?.user?._id;
+  if (!userId) throw new ApiError(401, "Unauthorized access");
+
+  if (req?.user?.role === "ADMIN") {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, req.user, "User is already an ADMIN"));
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        role: "ADMIN",
+      },
+    },
+    {
+      new: true,
+    },
+  ).select("-password -refreshToken");
+  if (!user || !user.role)
+    throw new ApiError("Failed to set the user's role to ADMIN");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, user, "User's role is set to ADMIN successfully"),
+    );
+});
+
 export {
-  registerUser,
+  changeCurrentPassword,
+  getAllUsers,
+  getMe,
   loginUser,
   logoutUser,
   refreshAccessToken,
+  registerUser,
+  setRoleToAdmin,
   updateUserDetails,
-  changeCurrentPassword,
 };

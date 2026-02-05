@@ -18,8 +18,6 @@ const paymentVerification = asyncHandler(async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
     req?.body?.paymentInfo;
 
-  console.log("body:", req.body);
-
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
     throw new ApiError(400, "Missing payment verification data");
 
@@ -107,7 +105,7 @@ const paymentVerification = asyncHandler(async (req, res) => {
 const getRazorpayKey = asyncHandler(async (req, res) => {
   const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
   if (!razorpayKeyId)
-    throw new ApiError(500, "Razorpay key not found in environment variables");
+    throw new ApiError(500, "Razorpay key Id not found in environment variables");
 
   return res.status(200).json(
     new ApiResponse(
@@ -115,7 +113,7 @@ const getRazorpayKey = asyncHandler(async (req, res) => {
       {
         razorpayKeyId,
       },
-      "Successfully fetched razorpaykeyId",
+      "Successfully fetched Razorpay Key Id",
     ),
   );
 });

@@ -6,6 +6,7 @@ import {
   getMyOrders,
   getOrderById,
   updateOrderStatus,
+  updatePaymentStatusByOrderId,
 } from "../controllers/order.controllers.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -19,5 +20,8 @@ router.route("/all-orders").get(getAllOrders);
 router.route("/:orderId").get(getOrderById);
 router.route("/cancel-order/:orderId").patch(cancelOrder);
 router.route("/update-order-status/:orderId").patch(updateOrderStatus);
+router
+  .route("/update-payment-status/:orderId")
+  .patch(updatePaymentStatusByOrderId);
 
 export default router;
