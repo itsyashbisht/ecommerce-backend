@@ -12,7 +12,7 @@ import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router();
 
-router.route("/products").get(verifyJWT, getAllProducts);
+router.route("/products").get(getAllProducts);
 router.route("/:productId").get(verifyJWT, productById);
 router.route("/create").post(
   verifyJWT,

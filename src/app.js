@@ -2,7 +2,6 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 
-
 // EXPRESS APP
 const app = express();
 app.use(
@@ -31,5 +30,6 @@ app.use("/api/v1/review", reviewRouter);
 app.use("/api/v1/cart", cartRouter);
 app.use("/api/v1/order", orderRouter);
 app.use("/api/v1/payment", paymentRouter);
+
 
 export { app };

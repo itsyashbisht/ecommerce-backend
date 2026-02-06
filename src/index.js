@@ -4,7 +4,8 @@ import { app } from "./app.js";
 
 connectDB()
   .then(() => {
-    app.on("error", (error) => {
+    app.on(
+      "error", (error) => {
       console.log("Error: ", error);
       throw error;
     });
