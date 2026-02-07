@@ -153,7 +153,9 @@ const removeProductFromCart = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, removedEl, "Item removed from cart successfully"),
+      new ApiResponse(200, {
+        removedItem: removedEl[0],
+      }, "Item removed from cart successfully"),
     );
 });
 
